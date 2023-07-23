@@ -1,0 +1,12 @@
+Metadata-Version: 2.1
+Name: goviq
+Version: 0.1.0
+Summary: Your package description
+Home-page: https://github.com/your_username/your_package
+Author: Your Name
+Author-email: your.email@example.com
+License: MIT
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
+
+PLACEHOLDER

@@ -1,0 +1,13 @@
+README.md
+setup.py
+goviq/__init__.py
+goviq.egg-info/PKG-INFO
+goviq.egg-info/SOURCES.txt
+goviq.egg-info/dependency_links.txt
+goviq.egg-info/requires.txt
+goviq.egg-info/top_level.txt
+goviq/config/__init__.py
+goviq/config/scrapers/__init__.py
+goviq/config/scrapers/parl_ca.py
+goviq/scrapers/__init__.py
+goviq/scrapers/parl_ca.py

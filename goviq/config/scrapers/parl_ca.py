@@ -1,7 +1,6 @@
 """
 Configuration for the parl.ca scraper. This scraper is used to scrape bills in current session of parliament.
 """
-import os
 from bs4 import BeautifulSoup
 ROOT_URL = 'https://www.parl.ca/legisinfo/en/bills?page={}'  # String format in page number
 
