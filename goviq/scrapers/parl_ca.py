@@ -1,56 +1,100 @@
-import asyncio
 import aiohttp
+import asyncio
 from bs4 import BeautifulSoup
+import logging
+import json
+import requests
+from typing import Iterable
 
-from goviq.config.scrapers.parl_ca import ROOT_URL
+from goviq.config.local_cache import LOCAL_CACHE
+from goviq.entities.crawler import Crawler
+from goviq.utils import datestamp
 
-def get_bill_links(html):
-    soup = BeautifulSoup(html, 'html.parser')
-    links = soup.find_all('a', class_='bill-details')
-    return [link['href'] for link in links]
+logging.getLogger().setLevel(logging.INFO)
 
-async def fetch_page(url):
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url, headers={'User-Agent': 'Mozilla/5.0'}) as response:
+
+class BillCrawler(Crawler):
+    """
+    Fetches links to bills from parl.ca. Federal level Canadian bills.
+    """
+    ROOT_URL = "https://www.parl.ca"
+    BILL_URL = "https://www.parl.ca/legisinfo/en/legislation-at-a-glance"
+    _version = 1
+
+    def __init__(self, local_cache: str = None):
+        self.local_cache = local_cache if local_cache else LOCAL_CACHE
+        self.bill_links = self.fetch_bills()
+
+    def fetch_bills(self) -> Iterable[str]:  # TODO: Unit test to make sure this page structure doesnt change.
+        """
+        Fetches links to bills from parl.ca. Federal level Canadian bills.
+        :return: list of bill links
+        """
+        text = requests.get(self.BILL_URL).text
+        soup = BeautifulSoup(text, 'html.parser')
+        links = set(soup.find_all('a', class_='bill-tile-popup interactive-popup'))
+        return [self.ROOT_URL + link['href'] for link in links]
+
+    async def _fetch(self, url: str, session: aiohttp.ClientSession):
+        async with session.get(url, headers={'User-Agent': self.user_agent}) as response:
             if response.status == 200:
                 return await response.text()
-            else:
-                raise aiohttp.ClientResponseError(
-                    f"Failed to fetch page: {url}. Status code: {response.status}"
-                )
+            raise aiohttp.ClientResponseError(
+                f"Failed to fetch page: {url} Status code: {response.status}"
+            )
 
-async def get_all_pages(root_url):
-    page = 1
-    html_list = []
-    while True:
-        page_link = root_url.format(page)
-        print(f'CRAWLING .... {page_link}')
+    async def _parse(self, text):
+        """Parses bill text"""
+        soup = BeautifulSoup(text, 'html.parser')
+        links = soup.find_all('a', class_='publication btn btn-primary')
+        links = [link['href'] for link in links if link['href'].startswith('/DocumentViewer/en')]
+        # Assert that there is only one link, and then make a request to that link and pull the entire HTML body
+        if len(links) != 1:
+            raise ValueError(f"Expected 1 link, got {len(links)}")
+        link = links[0]
+        async with aiohttp.ClientSession() as session:
+            html = await self._fetch(self.ROOT_URL + link, session)
+        return html
+
+    async def _crawl(self):
+        async with aiohttp.ClientSession() as session:
+            tasks = [self._fetch_and_parse(page_link, session) for page_link in self.bill_links]
+            return await asyncio.gather(*tasks)
+
+    async def _fetch_and_parse(self, page_link, session):
+        logging.info(f'CRAWLING .... {page_link}')
         try:
-            html = await fetch_page(page_link)
+            html = await self._fetch(page_link, session)
         except aiohttp.ClientResponseError as e:
-            # Handle the error here (e.g., logging, retrying, etc.)
-            print(f"Error: {e}")
-            break  # Break the loop if there's an error
+            logging.info(f"Error: {e}")
+            return None  # or handle this case accordingly
+        return page_link, await self._parse(html)
 
-        bill_links = get_bill_links(html)
-        print(html)
-        if not bill_links:  # If there are no bill links, assume we reached the end
-            break
+    def _cache(self, links: dict, filename='bill_text') -> None:
+        """
+        Caches the list of links to a file.
+        :param links: list of links
+        :param filename: filename to cache to
+        :return:
+        """
+        filepath = f"{self.local_cache}/{filename}_{datestamp()}"
+        with open(f'{filepath}.json', 'w') as f:
+            json.dump(links, f)
+        logging.info(f'Cached {len(links)} links to {filepath}.json')
 
-        html_list.append(html)
-        page += 1
+    def crawl(self, local_cache: str = None) -> None:
+        loop = asyncio.get_event_loop()
+        logging.info('Beginning crawl of parl.ca')
+        links = loop.run_until_complete(self._crawl())
+        links = [link for sublist in links for link in sublist]
+        logging.info('Completed crawl of parl.ca. Caching results to disk.')
+        self._cache(links)
 
-    return html_list
+
 def main():
-    loop = asyncio.get_event_loop()
-    html_list = loop.run_until_complete(get_all_pages(ROOT_URL))
+    crawler = BillCrawler()
+    crawler.crawl()
 
-    bill_links = []
-    for html in html_list:
-        bill_links.extend(get_bill_links(html))
-    with open('bill_links.txt', 'w') as f:
-        for link in bill_links:
-            f.write(f'{link}\n')
 
 if __name__ == '__main__':
     main()
