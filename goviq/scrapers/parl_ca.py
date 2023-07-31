@@ -67,6 +67,7 @@ class BillCrawler(Crawler):
         logging.info('Completed crawl of parl.ca. Caching results to disk.')
         self._cache(links)
 
+
 def main():
     crawler = BillCrawler()
     crawler.crawl()
