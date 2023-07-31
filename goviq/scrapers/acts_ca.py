@@ -2,9 +2,11 @@ import aiohttp
 import asyncio
 from bs4 import BeautifulSoup
 import logging
+import json
 
 from goviq.config.local_cache import LOCAL_CACHE
 from goviq.entities.crawler import Crawler
+from goviq.utils import datestamp
 
 logging.getLogger().setLevel(logging.INFO)
 
@@ -47,18 +49,25 @@ class ActCrawler(Crawler):
             return None  # or handle this case accordingly
         return {page_link: self._parse(html)}
 
+    def _cache(self, links):
+        filepath = f"{self.local_cache}/act_text_{datestamp()}"
+        with open(f'{filepath}.json', 'w') as f:
+            json.dump(links, f)
+        logging.info(f'Cached {len(links)} links to {filepath}.json')
+
     def crawl(self, local_cache: str = None):
         loop = asyncio.get_event_loop()
         logging.info('Fetching act urls...')
         act_urls = loop.run_until_complete(self._fetch_act_urls())
         logging.info(f'Fetched {len(act_urls)} act urls.')
-        loop.run_until_complete(self._crawl(links=act_urls))
+        links = loop.run_until_complete(self._crawl(links=act_urls))
+        # cache links to local cache with datestamp and name bill_text
+        self._cache(links)
 
 
 def main():
     crawler = ActCrawler()
     crawler.crawl()
-
 
 
 if __name__ == "__main__":
