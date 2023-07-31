@@ -1,11 +1,11 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 import aiohttp
 import asyncio
 import logging
 from typing import Any
 
 
-class Crawler:
+class Crawler(ABC):
     ROOT_URL = None
     _version = 1
     cache_path = None
@@ -30,7 +30,7 @@ class Crawler:
         """
         raise NotImplementedError()
 
-    async def _fetch_and_parse(self, page_link, session): # TODO: take this out of the class
+    async def _fetch_and_parse(self, page_link, session):  # TODO: take this out of the class
         logging.info(f'CRAWLING .... {page_link}')
         try:
             html = await self._fetch(page_link, session)
