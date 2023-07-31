@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 import logging
 import json
 import requests
-from typing import Iterable
+from typing import Iterable, List
 
 from goviq.config.local_cache import LOCAL_CACHE
 from goviq.entities.crawler import Crawler
@@ -35,14 +35,6 @@ class BillCrawler(Crawler):
         links = set(soup.find_all('a', class_='bill-tile-popup interactive-popup'))
         return [self.ROOT_URL + link['href'] for link in links]
 
-    async def _fetch(self, url: str, session: aiohttp.ClientSession):
-        async with session.get(url, headers={'User-Agent': self.user_agent}) as response:
-            if response.status == 200:
-                return await response.text()
-            raise aiohttp.ClientResponseError(
-                f"Failed to fetch page: {url} Status code: {response.status}"
-            )
-
     async def _parse(self, text):
         """Parses bill text"""
         soup = BeautifulSoup(text, 'html.parser')
@@ -56,21 +48,7 @@ class BillCrawler(Crawler):
             html = await self._fetch(self.ROOT_URL + link, session)
         return html
 
-    async def _crawl(self):
-        async with aiohttp.ClientSession() as session:
-            tasks = [self._fetch_and_parse(page_link, session) for page_link in self.bill_links]
-            return await asyncio.gather(*tasks)
-
-    async def _fetch_and_parse(self, page_link, session):
-        logging.info(f'CRAWLING .... {page_link}')
-        try:
-            html = await self._fetch(page_link, session)
-        except aiohttp.ClientResponseError as e:
-            logging.info(f"Error: {e}")
-            return None  # or handle this case accordingly
-        return page_link, await self._parse(html)
-
-    def _cache(self, links: dict, filename='bill_text') -> None:
+    def _cache(self, links: List[dict], filename='bill_text') -> None:
         """
         Caches the list of links to a file.
         :param links: list of links
@@ -85,11 +63,9 @@ class BillCrawler(Crawler):
     def crawl(self, local_cache: str = None) -> None:
         loop = asyncio.get_event_loop()
         logging.info('Beginning crawl of parl.ca')
-        links = loop.run_until_complete(self._crawl())
-        links = [link for sublist in links for link in sublist]
+        links = loop.run_until_complete(self._crawl(links=self.bill_links))
         logging.info('Completed crawl of parl.ca. Caching results to disk.')
         self._cache(links)
-
 
 def main():
     crawler = BillCrawler()
