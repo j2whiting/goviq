@@ -15,10 +15,9 @@ with open('README.md', 'r', encoding='utf-8') as f:
 
 # List of required packages
 REQUIRES = [
-    'aiohttp',
-    'beautifulsoup4',
-    'requests',
-    # Add other required dependencies here
+    'aiohttp==3.8.5',
+    'beautifulsoup4==4.12.2',
+    'requests==2.31.0',
 ]
 
 setup(
