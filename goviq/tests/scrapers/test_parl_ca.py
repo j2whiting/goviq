@@ -24,5 +24,10 @@ class TestBillCrawler(unittest.TestCase):
         self.assertIsInstance(html, str)
         self.assertTrue(len(html) > 0)
 
-    # TODO: Create fixture for testing caching with tempfile
+    async def test_parse_empty(self):
+        mock_html = None
+        html = await self.crawler._parse(mock_html)
+        self.assertIsNone(html)
 
+    # TODO: test case where there are multiple links
+    # TODO: test non-200 response
