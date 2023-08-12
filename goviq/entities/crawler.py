@@ -16,14 +16,18 @@ class Crawler(ABC):
     async def _fetch(self, url: str, session: aiohttp.ClientSession):
         async with session.get(url, headers={'User-Agent': self.user_agent}) as response:
             if response.status == 200:
-                return await response.text()
+                try:
+                    return await response.text()
+                except aiohttp.ClientPayloadError as e:
+                    logging.warning(f"Error: {e}")
+                    return None
             logging.warning(
                 f"Failed to fetch page: {url} Status code: {response.status}"
             )
             return None
 
     @abstractmethod
-    def _parse(self, **kwargs) -> Any:
+    def _parse(self, html) -> Any:
         """
         :param kwargs:
         :return:
@@ -34,7 +38,7 @@ class Crawler(ABC):
         logging.info(f'CRAWLING .... {page_link}')
         try:
             html = await self._fetch(page_link, session)
-        except aiohttp.ClientResponseError() as e:
+        except aiohttp.ClientResponseError as e:
             logging.info(f"Error: {e}")
             return None  # or handle this case accordingly
         return {page_link: await self._parse(html)}
