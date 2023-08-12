@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import json
+import logging
 import os
 from typing import List
 
@@ -25,5 +26,7 @@ class Preprocessor(ABC):
         raise NotImplementedError()
 
     def cache(self, docs: List[dict], path) -> None:
-        with open(os.path.join(self.local_cache, path), 'w') as f:
+        out_path = os.path.join(self.local_cache, path)
+        with open(out_path, 'w') as f:
+            logging.info(f'Writing {type(self)} output to {out_path}')
             json.dump(docs, f)
