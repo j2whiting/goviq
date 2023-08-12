@@ -17,7 +17,9 @@ with open('README.md', 'r', encoding='utf-8') as f:
 REQUIRES = [
     'aiohttp==3.8.5',
     'beautifulsoup4==4.12.2',
+    'regex',
     'requests==2.31.0',
+    'tqdm',
 ]
 
 setup(
