@@ -35,9 +35,11 @@ class BillCrawler(Crawler):
         links = set(soup.find_all('a', class_='bill-tile-popup interactive-popup'))
         return [self.ROOT_URL + link['href'] for link in links]
 
-    async def _parse(self, text):
+    async def _parse(self, html):
+        if html is None:
+            return None
         """Parses bill text"""
-        soup = BeautifulSoup(text, 'html.parser')
+        soup = BeautifulSoup(html, 'html.parser')
         links = soup.find_all('a', class_='publication btn btn-primary')
         links = [link['href'] for link in links if link['href'].startswith('/DocumentViewer/en')]
         # Assert that there is only one link, and then make a request to that link and pull the entire HTML body

@@ -30,6 +30,8 @@ class ActCrawler(Crawler):
         return [self.ROOT_URL + link['href'].replace('index.html', 'FullText.html') for link in div_elements]
 
     def _parse(self, html):
+        if html is None:  # Handle payload errors. TODO: figure out why these errors are occuring.
+            return None
         soup = BeautifulSoup(html, 'html.parser')
         div_elements = soup.find_all('div', {'class': 'docContents'})
         return [div_element.text for div_element in div_elements]
@@ -44,7 +46,7 @@ class ActCrawler(Crawler):
         logging.info(f'CRAWLING .... {page_link}')
         try:
             html = await self._fetch(page_link, session)
-        except aiohttp.ClientResponseError() as e:
+        except aiohttp.ClientResponseError as e:
             logging.info(f"Error: {e}")
             return None  # or handle this case accordingly
         return {page_link: self._parse(html)}
