@@ -1,14 +1,18 @@
 from abc import ABC, abstractmethod
+import json
+import os
 from typing import List
+
+from goviq.utils import load_json_docs
 
 
 class Preprocessor(ABC):
     _version = 1
-    cache_path = None
+    local_cache = None
 
-    @abstractmethod
-    def load(self, path: str, **kwargs):
-        raise NotImplementedError()
+    @staticmethod
+    def load(path: str) -> List[dict]:
+        return load_json_docs(path)
 
     @abstractmethod
     def preprocess(self, document: List[dict], **kwargs) -> dict:
@@ -20,6 +24,6 @@ class Preprocessor(ABC):
         """
         raise NotImplementedError()
 
-    @abstractmethod
-    def cache(self, **kwargs):
-        raise NotImplementedError()
+    def cache(self, docs: List[dict], path) -> None:
+        with open(os.path.join(self.local_cache, path), 'w') as f:
+            json.dump(docs, f)
