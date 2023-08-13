@@ -3,11 +3,9 @@ from setuptools import setup, find_packages
 # Project metadata
 NAME = "goviq"
 VERSION = '0.1.0'
-DESCRIPTION = 'Your package description'
-AUTHOR = 'Your Name'
-EMAIL = 'your.email@example.com'
-URL = 'https://github.com/your_username/your_package'
-LICENSE = 'MIT'
+DESCRIPTION = 'Application for scraping and preprocessing government documents for downstream analysis'
+AUTHOR = 'Julian Whiting'
+EMAIL = 'j2whitin@gmail.com'
 
 # Read the long description from README file
 with open('README.md', 'r', encoding='utf-8') as f:
@@ -30,8 +28,6 @@ setup(
     long_description_content_type='text/markdown',
     author=AUTHOR,
     author_email=EMAIL,
-    url=URL,
-    license=LICENSE,
     packages=find_packages(exclude=['tests', 'docs']),
     install_requires=REQUIRES,
     python_requires='>=3.6',
