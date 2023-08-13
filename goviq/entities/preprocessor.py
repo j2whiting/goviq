@@ -16,11 +16,8 @@ class Preprocessor(ABC):
         return load_json_docs(path)
 
     @abstractmethod
-    def preprocess(self, document: List[dict], **kwargs) -> dict:
+    def preprocess(self, **kwargs) -> List[dict]:
         """
-        :param document: List of documents pulled from scraper. Each doc should be in the structure:
-        {URL: HTML text}
-        :param kwargs: Additional kwargs for preprocessing.
         :return: List of JSON serializable objects, where each key in the JSON corresponds to relevant metadata.
         """
         raise NotImplementedError()
