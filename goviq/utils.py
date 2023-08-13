@@ -3,6 +3,7 @@ import datetime
 import bs4
 from langdetect import detect_langs
 import json
+from typing import List
 
 
 def datestamp():
@@ -59,3 +60,12 @@ def split_document_at_language_transition(document, window_size=1000):
     else:
         return document, None
 
+
+def act_reference_count(bill: str, acts: List[str]):
+    """Return the number of times each act is referenced in a bill. Return as a dictionary of act: count pairs"""
+    act_cts = {}
+    for act in acts:
+        ct = bill.lower().count(act.lower())
+        if ct > 0:
+            act_cts[act] = ct
+    return act_cts
