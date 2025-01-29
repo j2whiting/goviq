@@ -1,11 +1,11 @@
-# Goviq
+# Goviq (WIP)
 
 **Version**: 0.1.0  
 **Author**: Julian Whiting (<j2whitin@gmail.com>)
 
 ## Overview
 
-**Goviq** is an application for scraping and preprocessing government documents for downstream analysis. It provides a framework for creating and running crawlers that fetch government data (e.g., parliamentary bills, acts, etc.), parse the data, and store it locally for further analysis or machine learning tasks.
+**Goviq** is an application for scraping and preprocessing government documents for downstream analysis. It provides a framework for creating and running crawlers that fetch Canadian government data (e.g., parliamentary bills, acts, etc.), parse the data, and store it locally for further analysis or machine learning tasks.
 
 ## Features
 
