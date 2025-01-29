@@ -62,7 +62,8 @@ crawler.crawl()
 
 - Parliament sessions are hardcoded somewhere. Ought to be able to accept a date range or list of sessions to parse
 - How to handle different versions of acts?
-- I don't know if the local cache env var is still needed. I took a long break from developing this :) 
+- I don't know if the local cache env var is still needed. I took a long break from developing this :)
+- Update README.md with some info about runtime, dataset size, provenance, etc..  
 
 ## Contributing
 
