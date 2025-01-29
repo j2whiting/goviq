@@ -1,8 +1,11 @@
-import aiohttp
+# act_crawler.py
 import asyncio
-from bs4 import BeautifulSoup
 import logging
 import json
+from bs4 import BeautifulSoup
+import aiohttp
+
+from typing import List, Dict, Any
 
 from goviq.config.local_cache import LOCAL_CACHE
 from goviq.entities.crawler import Crawler
@@ -10,67 +13,94 @@ from goviq.utils import datestamp
 
 logging.getLogger().setLevel(logging.INFO)
 
-
 class ActCrawler(Crawler):
     """
-    Fetches links to acts from laws.justice.gc.ca. Federal level Canadian acts.
+    Fetches links to acts from laws.justice.gc.ca. Federal-level Canadian acts.
     """
     ROOT_URL = "https://laws-lois.justice.gc.ca/eng/acts/"
-    alphabet = list('ABCDEFGHIJKLMNOPQRSTUVWXYZ')
-    ACT_URLS = [f"https://laws-lois.justice.gc.ca/eng/acts/{a}.html" for a in alphabet]
+    ALPHABET = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+    ACT_URLS = [f"https://laws-lois.justice.gc.ca/eng/acts/{a}.html" for a in ALPHABET]
 
-    _version = 1
-
-    def __init__(self, local_cache: str = None):
+    def __init__(self, local_cache: str = None, max_concurrent_tasks: int = 50):
+        """
+        :param local_cache: Directory path for cached output.
+        :param max_concurrent_tasks: How many pages to fetch concurrently.
+        """
+        super().__init__(max_concurrent_tasks=max_concurrent_tasks)
         self.local_cache = local_cache if local_cache else LOCAL_CACHE
 
-    def _parse_index(self, html):
-        soup = BeautifulSoup(html, 'html.parser')
-        div_elements = soup.find_all('a', {'class': 'TocTitle'})
-        return [self.ROOT_URL + link['href'].replace('index.html', 'FullText.html') for link in div_elements]
+    def _parse_index(self, html: str) -> List[str]:
+        """
+        Parses the alphabetical index page to find each Act's "FullText.html" link.
+        Returns absolute URLs for each Act's full text.
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        link_elements = soup.find_all("a", {"class": "TocTitle"})
+        # Convert relative URLs to absolute "FullText.html" links
+        fulltext_links = []
+        for link in link_elements:
+            href = link.get("href", "")
+            if href.endswith("index.html"):
+                full_url = self.ROOT_URL + href.replace("index.html", "FullText.html")
+                fulltext_links.append(full_url)
+        return fulltext_links
 
-    def _parse(self, html):
-        if html is None:  # Handle payload errors. TODO: figure out why these errors are occuring.
-            return None
-        soup = BeautifulSoup(html, 'html.parser')
-        div_elements = soup.find_all('div', {'class': 'docContents'})
-        return [div_element.text for div_element in div_elements]
+    async def _parse(self, html: str) -> List[str]:
+        """
+        Asynchronously parses the final FullText.html page to extract the text of the Act.
+        Returns a list of text segments (one per <div class="docContents">).
+        """
+        if html is None:
+            return []
+        soup = BeautifulSoup(html, "html.parser")
+        div_elements = soup.find_all("div", {"class": "docContents"})
+        return [div_element.get_text(strip=True) for div_element in div_elements]
 
-    async def _fetch_act_urls(self):
-        async with aiohttp.ClientSession() as session:
-            htmls = await asyncio.gather(*[self._fetch(url, session) for url in self.ACT_URLS])
-        parsed_htmls = [self._parse_index(html) for html in htmls if html]
-        return [item for sublist in parsed_htmls for item in sublist]
+    async def _fetch_act_urls(self) -> List[str]:
+        """
+        Asynchronously fetches all index pages and compiles a list of final FullText.html links.
+        """
+        act_urls = []
+        connector = aiohttp.TCPConnector(limit=50)
+        async with aiohttp.ClientSession(connector=connector) as session:
+            tasks = [self._fetch(url, session) for url in self.ACT_URLS]
+            # Each item is either the HTML or None
+            index_pages = await asyncio.gather(*tasks, return_exceptions=True)
 
-    async def _fetch_and_parse(self, page_link, session):
-        logging.info(f'CRAWLING .... {page_link}')
+        for idx, result in enumerate(index_pages):
+            if isinstance(result, Exception):
+                logging.error(f"Index fetch for {self.ACT_URLS[idx]} failed: {result}")
+            elif result is not None:
+                # Parse the index page to get final act links
+                final_links = self._parse_index(result)
+                act_urls.extend(final_links)
+
+        return act_urls
+
+    def _cache(self, data: List[Dict[str, Any]], filename: str = "act_text") -> None:
+        """
+        Caches the results to a JSON file with a datestamp.
+        """
+        filepath = f"{self.local_cache}/{filename}_{datestamp()}.json"
         try:
-            html = await self._fetch(page_link, session)
-        except aiohttp.ClientResponseError as e:
-            logging.info(f"Error: {e}")
-            return None  # or handle this case accordingly
-        return {page_link: self._parse(html)}
+            with open(filepath, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            logging.info(f"Cached {len(data)} items to {filepath}")
+        except IOError as e:
+            logging.error(f"Error writing cache file {filepath}: {e}")
 
-    def _cache(self, links):
-        filepath = f"{self.local_cache}/act_text_{datestamp()}"
-        with open(f'{filepath}.json', 'w') as f:
-            json.dump(links, f)
-        logging.info(f'Cached {len(links)} links to {filepath}.json')
-
-    def crawl(self, local_cache: str = None):
+    def crawl(self) -> None:
+        """
+        Main entry point: fetches index pages, extracts final Act URLs, then crawls them for text.
+        """
+        logging.info("Fetching Act index pages...")
         loop = asyncio.get_event_loop()
-        logging.info('Fetching act urls...')
         act_urls = loop.run_until_complete(self._fetch_act_urls())
-        logging.info(f'Fetched {len(act_urls)} act urls.')
-        links = loop.run_until_complete(self._crawl(links=act_urls))
-        # cache links to local cache with datestamp and name bill_text
-        self._cache(links)
+        logging.info(f"Found {len(act_urls)} final Act links. Beginning crawl...")
 
+        # Now fetch + parse the actual FullText.html pages
+        results = loop.run_until_complete(self._crawl(act_urls))
 
-def main():
-    crawler = ActCrawler()
-    crawler.crawl()
-
-
-if __name__ == "__main__":
-    main()
+        # results is a list of dicts: [{url: [list_of_text_segments]}, ...]
+        self._cache(results)
+        logging.info("ActCrawler crawl complete.")
