@@ -5,7 +5,7 @@
 
 ## Overview
 
-**Goviq** is an application for scraping and preprocessing government documents for downstream analysis. It provides a framework for creating and running crawlers that fetch Canadian government data (e.g., parliamentary bills, acts, etc.), parse the data, and store it locally for further analysis or machine learning tasks.
+**Goviq** is an application for scraping Canadian Govt documents. Created with downstream RAG pipelines in mind.
 
 ## Features
 
@@ -57,6 +57,12 @@ from goviq.scrapers.parl_ca import BillCrawler
 crawler = BillCrawler()
 crawler.crawl()
 ```
+
+## TODO:
+
+- Parliament sessions are hardcoded somewhere. Ought to be able to accept a date range or list of sessions to parse
+- How to handle different versions of acts?
+- I don't know if the local cache env var is still needed. I took a long break from developing this :) 
 
 ## Contributing
 
