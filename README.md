@@ -1,4 +1,4 @@
-# Goviq (WIP)
+# Goviq
 
 **Version**: 0.1.0  
 **Author**: Julian Whiting (<j2whitin@gmail.com>)
